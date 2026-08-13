@@ -1,0 +1,51 @@
+name: Patient Order CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  validate:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r app/requirements.txt
+
+      - name: Validate Python
+        run: |
+          python -m py_compile app/app.py
+
+      - name: Build Docker image
+        run: |
+          docker build -t patient-order:test ./app
+
+      - name: Test Docker image
+        run: |
+          docker run -d \
+            --name patient-order-test \
+            -p 5000:5000 \
+            patient-order:test
+
+          sleep 5
+
+          curl --fail http://localhost:5000/health
+
+          docker stop patient-order-test
